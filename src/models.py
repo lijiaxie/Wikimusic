@@ -1,19 +1,22 @@
 import sqlite3
 import numpy as np
 import random
+import time
 
 
 class Graph:
-    def __init__(self, binary, db_path, dbg=False):
+    def __init__(self, bin_path, db_path, dbg=False):
         if dbg:
             # TODO: initialize logging
             print "Loading file"
 
         self.header_size = 4
-        self.array = np.fromfile(binary, dtype='<i4')
+        self.array = np.fromfile(bin_path, dtype='<i4')
 
         self.db = sqlite3.connect(db_path)
         self.cur = self.db.cursor()
+
+        self.nodes = self.get_nodes()
 
     def at(self, pos, int_offset):
         return self.array[pos / 4 + int_offset]
@@ -51,33 +54,60 @@ class Graph:
 
     def name(self, pos):
         self.cur.execute("SELECT title FROM pages WHERE offset =:offset LIMIT 1", {"offset": int(pos)})
-        return self.cur.fetchone()[0]
+        retval = self.cur.fetchone()
+        if retval is not None:
+            return retval[0]
+        return retval
 
     def find(self, string):
         self.cur.execute("SELECT offset FROM pages WHERE title =:title LIMIT 1", {"title": string})
-        return self.cur.fetchone()[0]
+        retval = self.cur.fetchone()
+        if retval is not None:
+            return retval[0]
+        return retval
 
-    def to_matrix(self):
-        pass
+    def get_namespace(self, pos):
+        m = self.meta(pos)
+        return (m >> 8) & 7
 
-    def get_path(self, length):
-        start_int = random.randint(0, len(self.array))
-        while self.array[start_int] != 0:
-            start_int += 1
-            if start_int >= len(self.array):
-                start_int = 0
+    def get_nodes(self):
+        return [node[0] for node in self.cur.execute("SELECT offset FROM pages")]
 
-        page_links = self.page_links(start_int * 4)
-        seed = random.sample(page_links, 1)[0]
-
-        path = [seed]
-        cur_node = seed
-        nodes = len(path)
+    def get_path(self, length, order):
+        path = []
+        nodes = 0
         while nodes != length:
-            links = self.page_links(cur_node)
-            next_node = random.sample(links, 1)[0]
-            path.append(next_node)
-            cur_node = next_node
-            nodes += 1
+            seed = random.sample(self.nodes, 1)[0]
+            path = [seed]
+            cur_node = seed
+            nodes = 1
+            while nodes != length:
+                links = self.page_links(cur_node)
+                try:
+                    next_node = random.sample(links, 1)[0]
+                except ValueError:
+                    break
+                path.append(next_node)
+                cur_node = next_node
+                nodes += 1
 
         return path
+
+    def total_links(self):
+        links = 0
+        cur = self.header_size
+        while cur < len(self.array):
+            links += self.array[cur + 1]
+            cur += self.header_size + self.array[cur + 1]
+
+        return links
+
+
+class ExecTimer:
+    def __enter__(self):
+        self.start = time.clock()
+        return self
+
+    def __exit__(self, *args):
+        self.end = time.clock()
+        self.interval = self.end - self.start
