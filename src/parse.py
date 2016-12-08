@@ -7,9 +7,7 @@ import json
 import urllib
 import urlparse
 from selenium import webdriver
-from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.common.exceptions import NoSuchElementException
 import lxml.html
 
 XML_ARTISTS = '../data/discogs_20160201_artists.xml'

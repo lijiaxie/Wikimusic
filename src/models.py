@@ -2,6 +2,8 @@ import sqlite3
 import numpy as np
 import random
 import time
+import operator
+import math
 
 
 class Graph:
@@ -73,9 +75,19 @@ class Graph:
     def get_nodes(self):
         return [node[0] for node in self.cur.execute("SELECT offset FROM pages")]
 
-    def get_path(self, length, order):
+
+    def get_path(self, length, order=1, affine=False):
         path = []
         nodes = 0
+        # 0 through order, where 0 is immediate history
+        hist = []
+        alphas = []
+        if order > 1:
+            for i in range(order):
+                hist.append([])
+                if affine:
+                    alphas.append(float(i + 1) / sum(range(1, order + 1)))
+
         while nodes != length:
             seed = random.sample(self.nodes, 1)[0]
             path = [seed]
@@ -83,8 +95,23 @@ class Graph:
             nodes = 1
             while nodes != length:
                 links = self.page_links(cur_node)
+                if order > 1:
+                    # update state histories
+                    hist.append(links)
+                    hist.pop(0)
+                    samples = []
+                    if affine:
+                        for i in range(order):
+                            quant = reduce(operator.mul, [len(state) for state in hist[:i] + hist[i + 1:]], 1)
+                            samples += [item for sublist in [[x] * int(math.floor(alphas[i] * quant))
+                                                             for x in hist[i]] for item in sublist]
+                    else:
+                        samples = [item for sublist in hist for item in sublist]
+                else:
+                    samples = links
+
                 try:
-                    next_node = random.sample(links, 1)[0]
+                    next_node = random.sample(samples, 1)[0]
                 except ValueError:
                     break
                 path.append(next_node)

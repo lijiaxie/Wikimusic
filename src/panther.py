@@ -14,7 +14,9 @@ def panther(query_nodes):
     widgets = ['Sampling: ', Percentage(), Bar(), ETA()]
     bar = ProgressBar(widgets=widgets, maxval=R).start()
     for i in range(int(ceil(R))):
-        path = g.get_path(T + 1, 1)
+        with Timer() as t:
+            path = g.get_path(T + 1, 1)
+        print t.interval
         relevant_query_nodes = query_node_offsets & set(path)
         for node in relevant_query_nodes:
             if node not in scores:
