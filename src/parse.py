@@ -1,7 +1,5 @@
-import csv
-from xml.etree import ElementTree as etree
+import unicodecsv
 from panther import *
-from params import *
 import cPickle
 import json
 import urllib
@@ -14,35 +12,53 @@ XML_ARTISTS = '../data/discogs_20160201_artists.xml'
 XML_RELEASES = '../data/discogs_20160101_releases.xml.gz'
 
 TASTEKID_OUT = '../data/tastekid_recs_json.pickle'
-IFYOUDIG_OUT = '../data/ifyoudig_10000.pickle'
+IFYOUDIG_ONE = '../data/ifyoudig1.pickle'
+IFYOUDIG_TWO = '../data/ifyoudig2.pickle'
+IFYOUDIG_OUT_OLD = '../data/ifyoudig_10000.pickle'
+
+MUS_OFFSETS = '../data/musician_offsets.pickle'
+MUS_NAMES = '../data/musician_names.pickle'
+DBPEDIA = '../data/dbpedia/'
+
+IYD = '../data/iyd.pickle'
+IYDO = '../data/iyd_o.pickle'
+
+def init_graph(local=True):
+    return Graph(LOC_BINARY, LOC_DB)
 
 
-def xml(filename):
-    with open(filename) as xmlfile:
-        root = etree.parse(xmlfile).getroot()
-        print(root)
-
-
-def parse_musicians(filename):
+def dbpedia_offsets(dbpedia_dir = DBPEDIA, local=True):
+    import os
     musicians = []
-    with open(filename, 'r') as f:
-        reader = csv.reader(f, delimiter='\t')
-        next(reader)
-        for row in reader:
-            string = row[0].split("/")[-1].replace('_', ' ')
-            try:
-                uni_str = unicode(string)
-                musicians.append(uni_str)
-            except UnicodeDecodeError:
-                continue
+    if local:
+        dbpedia_dir = dbpedia_dir[3:]
+    for file in os.listdir(dbpedia_dir):
+        if file.endswith(".tsv"):
+            with open(os.path.join(dbpedia_dir, file), 'r') as f:
+                reader = unicodecsv.reader(f, delimiter='\t')
+                next(reader)
+                for row in reader:
+                    string = row[0][28:].replace('_', ' ')
+                    assert(type(string) == type(u''))
+                    tup = (string, float(row[1]))
+                    if tup not in musicians:
+                        musicians.append(tup)
 
-    return musicians
+    if not local:
+        g = Graph(BINARY, DB)
+    else:
+        g = Graph(LOC_BINARY, LOC_DB)
+
+    from operator import itemgetter
+
+    return [x for x in sorted([(g.find(node), score) for node, score in musicians],
+                              reverse=True, key=itemgetter(1)) if x[0]]
 
 
 def scrape_tastekid():
     key = '250576-Finalpro-3926RW4Q'
     data = {}
-    musicians = parse_musicians('../data/10000_dbpedia_rank.tsv')
+    musicians = parse_dbpedia('../data/10000_dbpedia_rank.tsv')
     widgets = ['Scraping: ', Percentage(), Bar(), ETA()]
     bar = ProgressBar(widgets=widgets, maxval=200).start()
     for i, musician in enumerate(musicians):
@@ -95,71 +111,110 @@ def lookup(driver, query):
     root = lxml.html.fromstring(driver.page_source)
     for row in root.xpath('.//table[@class="correlations"]//tbody//tr'):
         artist = row.xpath('.//td/a/text()')
-        lh = row.xpath('.//td[@class="lh"]/text()')
-        if artist and lh:
-            results.append((unicode(artist[0]), unicode(lh[0])))
+        # lh = row.xpath('.//td[@class="lh"]/text()')
+        if artist:
+            results.append(unicode(artist[0]))
     return results
 
 
 def scrape_ifyoudig():
     driver = init_driver()
-    musicians = parse_musicians('../data/10000_dbpedia_rank.tsv')
+    musicians = cPickle.load(open(MUS_NAMES))
+    names = list(zip(*musicians)[0])
     results = {}
-    times = []
+    old_data = cPickle.load(open(IFYOUDIG_OUT_OLD))
+    new_names = [x for x in names if x not in old_data]
+    assert(len(new_names) == 7770)
     widgets = ['Scraping: ', Percentage(), Bar(), ETA()]
-    bar = ProgressBar(widgets=widgets, maxval=len(musicians)).start()
-    for i, musician in enumerate(musicians):
+    bar = ProgressBar(widgets=widgets, maxval=len(new_names)).start()
+    for i, musician in enumerate(new_names):
         name = musician.split(' (')[0]
         query = "-".join(name.split(" ")).lower()
-        try:
-            with ExecTimer() as t:
-                result = lookup(driver, query)
-        finally:
-            # print "Lookup time: %.03f" % t.interval
-            times.append(t.interval)
+        result = lookup(driver, query)
         results[musician] = result
         bar.update(i)
 
-    # print "Average lookup time: %.05f" % (float(sum(times)) / len(times))
-
     bar.finish()
 
-    with open(IFYOUDIG_OUT, 'wb') as f:
-        cPickle.dump(results, f)
+    print "Cleaning up..."
+
+    data = {k: v for k, v in results.iteritems() if v}
+
+    with open(IFYOUDIG_TWO, 'wb') as f:
+        cPickle.dump(data, f)
 
     driver.quit()
 
 
-def train():
-    musicians = parse_musicians('../data/10000_dbpedia_rank.tsv')
-    g = Graph(BINARY, DB)
+def train(order, trial, normalize):
+    iydo = cPickle.load(open(IYDO))
+    mus = iydo.keys()
 
-    scores = panther(musicians)
-    with open('../data/panther_scores_dicts.pickle', 'wb') as f:
-        cPickle.dump(scores, f)
+    with ExecTimer() as t:
+        panther_scores = panther(mus, order=order, normalize=normalize)
 
-    # scores = cPickle.load(open('../data/panther_scores_dicts.pickle'))
-    top_k_sim = {}
+    ordered_sim = {}
     key_errors = 0
-    for node in musicians:
-        offset = g.find(node)
-        if offset is not None:
-            try:
-                top_k = scores[offset].most_common()
-                top_k_trans = [(g.name(offset), score) for offset, score in top_k]
-                top_k_sim[node] = top_k_trans
-            except KeyError:
-                key_errors += 1
+    widgets = ['train(): Ordering: ', Percentage(), Bar(), ETA()]
+    bar = ProgressBar(widgets=widgets, maxval=R).start()
+    for i, node in enumerate(mus):
+        try:
+            ordered = panther_scores[node].most_common()
+            results = [key for key, _ in ordered if key in iydo]
+            ordered_sim[node] = results
+        except KeyError:
+            key_errors += 1
 
-    print "Total errors: %d" % key_errors
+        bar.update(i)
 
-    with open('../data/top_%d_sim.pickle' % k, 'wb') as f:
-        cPickle.dump(top_k_sim, f)
+    bar.finish()
+
+    print "train(): Total errors (no Panther result): %d" % key_errors
+
+    with open('../data/trials/sim_trial_%d.pickle' % trial, 'wb') as f:
+        cPickle.dump(ordered_sim, f)
+
+    return ordered_sim, t.interval, key_errors
 
 
 def main():
-    parse_tastekid(TASTEKID_OUT)
+    results = []
+    iydo = cPickle.load(open(IYDO))
+    for normalize in [True, False]:
+        for order in range(1, MAX_ORDER+1):
+            for trial in range(1, N_TRIALS+1):
+                ordered_sim, t_interval, key_errors = train(order, trial, normalize)
+                for k in K_TRIALS:
+                    params = (k, order, epsilon, T, R, trial)
+                    print 'k = %d, order = %d - trial %d:' % (k, order, trial)
+                    sample_size = 0
+                    aps = []
+                    zero_errors = 0
+                    for key, vals in ordered_sim.iteritems():
+                        try:
+                            top_k_panther = vals[:k]
+                            top_k_iyd = iydo[key][:k]
+                            binary = [1 if x in top_k_iyd else 0 for x in top_k_panther]
+                            prec = [(float(x) * binary[i]) / (i + 1) for i, x in enumerate(list(np.cumsum(binary)))]
+                            try:
+                                aps.append(sum(prec) / sum(binary))
+                            except ZeroDivisionError:
+                                zero_errors += 1
+                                aps.append(0.0)
+                                continue
+                            sample_size += 1
+                        except KeyError:
+                            continue
+
+                    print 'main(): Average precision: %.05f - Sample size: %d - ' \
+                          'Zero errors: %d - Panther runtime: %f' % (float(np.mean(aps)), sample_size, zero_errors, t_interval)
+
+                    data = (aps, sample_size, zero_errors, t_interval, key_errors)
+                    results.append(params + data)
+
+    with open('../data/results/run_%d.pickle' % 1, 'wb') as f:
+        cPickle.dump(results, f)
 
 
 if __name__ == "__main__":
-    scrape_ifyoudig()
+    main()

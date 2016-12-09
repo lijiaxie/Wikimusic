@@ -68,6 +68,10 @@ class Graph:
             return retval[0]
         return retval
 
+    def check_meta(self, pos):
+        meta = self.meta(pos)
+        return (meta >> 8) & 7 == 0
+
     def get_namespace(self, pos):
         m = self.meta(pos)
         return (m >> 8) & 7
@@ -76,7 +80,7 @@ class Graph:
         return [node[0] for node in self.cur.execute("SELECT offset FROM pages")]
 
 
-    def get_path(self, length, order=1, affine=False):
+    def get_path(self, length, order=1, affine=False, meta=False):
         path = []
         nodes = 0
         # 0 through order, where 0 is immediate history
@@ -90,11 +94,16 @@ class Graph:
 
         while nodes != length:
             seed = random.sample(self.nodes, 1)[0]
+            if meta:
+                while not self.check_meta(seed):
+                    seed = random.sample(self.nodes, 1)[0]
             path = [seed]
             cur_node = seed
             nodes = 1
             while nodes != length:
                 links = self.page_links(cur_node)
+                if meta:
+                    links = [x for x in links if self.check_meta(x)]
                 if order > 1:
                     # update state histories
                     hist.append(links)

@@ -1,38 +1,49 @@
 from models import *
 from params import *
-from collections import Counter
+from collections import Counter as ct
 from progressbar import *
 
 
-def panther(query_nodes):
+def panther(query_nodes, order=1, normalize=False):
     g = Graph(bin_path=BINARY, db_path=DB)
-    # node_paths = {}
     scores = {}
 
-    query_node_offsets = set(g.find(node) for node in query_nodes)
+    if normalize:
+        counts = ct()
 
-    widgets = ['Sampling: ', Percentage(), Bar(), ETA()]
-    bar = ProgressBar(widgets=widgets, maxval=R).start()
+    query_nodes = set(query_nodes)
+
+    widgets = ['panther(): sampling: ', Percentage(), Bar(), ETA()]
+    bar = ProgressBar(widgets=widgets, maxval=int(ceil(R))).start()
     for i in range(int(ceil(R))):
-        with Timer() as t:
-            path = g.get_path(T + 1, 1)
-        print t.interval
-        relevant_query_nodes = query_node_offsets & set(path)
+        path = g.get_path(T + 1, order)
+        relevant_query_nodes = query_nodes & set(path)
         for node in relevant_query_nodes:
             if node not in scores:
-                scores[node] = Counter()
+                scores[node] = ct()
             for node2 in path:
+                if normalize:
+                    counts[node2] += 1
                 if node2 != node:
-                    scores[node][node2] += score_update
+                    scores[node][node2] += 1
+
+        if not relevant_query_nodes and normalize:
+            for node in path:
+                counts[node] += 1
+
         bar.update(i)
     bar.finish()
 
-    # for node in query_node_offsets:
-    #     scores[node] = Counter()
-    #     if node in node_paths:
-    #         for path in node_paths[node]:
-    #             for node2 in path:
-    #                 scores[node][node2] += 1. / R
+    widgets = ['panther(): normalizing: ', Percentage(), Bar(), ETA()]
+    bar = ProgressBar(widgets=widgets, maxval=len(scores)).start()
+    index = 0
+    if normalize:
+        for node1, nodes in scores.iteritems():
+            for node2, val in nodes.iteritems():
+                scores[node1][node2] = (scores[node1][node2] ** 2) / float(counts[node1] * counts[node2])
+        bar.update(index)
+        index += 1
+    bar.finish()
 
     return scores
 
