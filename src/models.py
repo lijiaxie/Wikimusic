@@ -84,14 +84,14 @@ class Graph:
         nodes = 0
         # 0 through order, where 0 is immediate history
         hist = []
-        # alphas = []
+        alphas = []
         if order > 1:
             for i in range(1, order + 1):
                 hist.append([])
                 # linear positive
-                # if affine == 1:
-                #     alphas.append(i)
-                # # poly pos
+                if affine == 1:
+                    alphas.append(i)
+                # poly pos
                 # elif affine == 2:
                 #     alphas.append(i ** 2)
                 # # expo pos
@@ -121,9 +121,9 @@ class Graph:
                 #         alphas.append(sum([(2 ** i) for i in range(1, order + 1)]))
                 #     else:
                 #         alphas.append(-(2 ** i))
-                # # unif pos
-                # else:
-                #     continue
+                # unif pos
+                else:
+                    continue
 
         while nodes != length:
             seed = random.sample(self.nodes, 1)[0]
@@ -145,8 +145,8 @@ class Graph:
                         hist.append(links)
                         hist.pop(0)
                         # non-affine
-                        # if affine == 0:
-                        samples = [item for sublist in hist for item in sublist]
+                        if affine == 0:
+                            samples = [item for sublist in hist for item in sublist]
 
                         # stupid coding
                         # else:
@@ -163,19 +163,19 @@ class Graph:
                         #         break
 
                         # negative affine cases
-                        # elif affine > 3:
-                        #     counters = [ct(x * abs(alphas[i])) for i, x in enumerate(hist)]
-                        #     counters.reverse()
-                        #     ctr_sum = ct()
-                        #     for i in range(len(counters)):
-                        #         if alphas[len(counters) - i - 1] > 0:
-                        #             ctr_sum += counters[i]
-                        #         else:
-                        #             ctr_sum -= counters[i]
-                        #     samples = list(ctr_sum.elements())
-                        # # positive cases
-                        # else:
-                        #     samples = list(sum([ct(x * alphas[i]) for i, x in enumerate(hist)], ct()).elements())
+                        elif affine > 3:
+                            counters = [ct(x * abs(alphas[i])) for i, x in enumerate(hist)]
+                            counters.reverse()
+                            ctr_sum = ct()
+                            for i in range(len(counters)):
+                                if alphas[len(counters) - i - 1] > 0:
+                                    ctr_sum += counters[i]
+                                else:
+                                    ctr_sum -= counters[i]
+                            samples = list(ctr_sum.elements())
+                        # positive cases
+                        else:
+                            samples = list(sum([ct(x * alphas[i]) for i, x in enumerate(hist)], ct()).elements())
 
                     else:
                         samples = links
