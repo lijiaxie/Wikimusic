@@ -78,14 +78,21 @@ def counter_test():
 
 def path_test():
     g = Graph(BINARY, DB)
-    order = 10
-    for affine in [0,1,2,3,4,5,6,7]:
-        times = []
-        for _ in range(100):
-            with ExecTimer() as t:
-               g.get_path(5,order,affine)
-            times.append(t.interval)
-        print "Affine: %d - Time: %.05f" % (affine, sum(times) / len(times))
+    tests = {}
+    for T in [5,10,20,50,100]:
+        tests[T] = []
+        for affine in [0]:
+            for order in [1,2,3,4,5]:
+                times = []
+                for _ in range(100):
+                    with ExecTimer() as t:
+                       g.get_path(T,order,affine)
+                    times.append(t.interval)
+                # print "Order: %d - Affine: %d - Time: %.05f" % (order, affine, sum(times) / len(times))
+                tests[T].append(sum(times) / len(times))
+
+
+    return tests
 
 
 if __name__ == "__main__":

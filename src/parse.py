@@ -165,7 +165,7 @@ def train(order, trial, normalize, affine):
 
     print 'train(): Panther runtime: %f - Panther errors: %d' % (t.interval, key_errors)
 
-    with open('../data/trials/sim_order_%d_norm_%d_affine_%d_trial_%d.pickle' % (order, normalize, affine, trial), 'wb') as f:
+    with open('../data/trials/sim_eps_%f_norm_%d_affine_%d_trial_%d.pickle' % (order, normalize, affine, trial), 'wb') as f:
         cPickle.dump(ordered_sim, f)
 
     return ordered_sim, t.interval, key_errors
@@ -176,11 +176,11 @@ def main():
     times = {}
     iydo = cPickle.load(open(IYDO))
     for affine in [0]:
-        for normalize in [False, True]:
-            max_order = 4
-            if affine == 0:
-                max_order = 6
-            for order in range(1, max_order):
+        for normalize in [False]:
+            # max_order = 4
+            # if affine == 0:
+            #     max_order = 6
+            for order in [0.06, 0.03, 0.01, 0.006, 0.003]:
                 for trial in range(1, 2):
                     print 'main(): order = %d, normalize = %d, affine = %d - trial %d:' % (order, normalize, affine, trial)
                     ordered_sim, t_interval, key_errors = train(order, trial, normalize, affine)
