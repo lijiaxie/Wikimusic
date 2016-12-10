@@ -1,6 +1,6 @@
 from models import *
 from params import *
-from progressbar import *
+# from progressbar import *
 #
 GLOBAL_GRAPH = Graph(bin_path=LOC_BINARY, db_path=LOC_DB)
 #
@@ -14,8 +14,8 @@ def panther(query_nodes, order=1, normalize=False, affine=0):
 
     query_nodes = set(query_nodes)
 
-    widgets = ['panther(): sampling: ', Percentage(), Bar(), ETA()]
-    bar = ProgressBar(widgets=widgets, maxval=int(ceil(R))).start()
+    # widgets = ['panther(): sampling: ', Percentage(), Bar(), ETA()]
+    # bar = ProgressBar(widgets=widgets, maxval=int(ceil(R))).start()
     for i in range(int(ceil(R))):
         path = GLOBAL_GRAPH.get_path(T + 1, order=order, affine=affine)
         relevant_query_nodes = query_nodes & set(path)
@@ -32,19 +32,19 @@ def panther(query_nodes, order=1, normalize=False, affine=0):
             for node in path:
                 counts[node] += 1
 
-        bar.update(i)
-    bar.finish()
+        # bar.update(i)
+    # bar.finish()
 
-    widgets = ['panther(): normalizing: ', Percentage(), Bar(), ETA()]
-    bar = ProgressBar(widgets=widgets, maxval=len(scores)).start()
+    # widgets = ['panther(): normalizing: ', Percentage(), Bar(), ETA()]
+    # bar = ProgressBar(widgets=widgets, maxval=len(scores)).start()
     index = 0
     if normalize:
         for node1, nodes in scores.iteritems():
             for node2, val in nodes.iteritems():
                 scores[node1][node2] = (scores[node1][node2] ** 2) / float(counts[node1] * counts[node2])
-        bar.update(index)
+        # bar.update(index)
         index += 1
-    bar.finish()
+    # bar.finish()
 
     return scores
 
