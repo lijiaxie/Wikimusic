@@ -1,12 +1,12 @@
 import unicodecsv
 from panther import *
-import cPickle
+import _pickle as cPickle
 import json
 import urllib
-import urlparse
-from selenium import webdriver
-from selenium.webdriver.support.ui import WebDriverWait
-import lxml.html
+import urllib.parse as urlparse
+# from selenium import webdriver
+#from selenium.webdriver.support.ui import WebDriverWait
+#import lxml.html
 
 XML_ARTISTS = '../data/discogs_20160201_artists.xml'
 XML_RELEASES = '../data/discogs_20160101_releases.xml.gz'
