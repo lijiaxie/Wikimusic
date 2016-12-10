@@ -1,11 +1,12 @@
 from models import *
 from params import *
-from collections import Counter as ct
 from progressbar import *
+#
+GLOBAL_GRAPH = Graph(bin_path=LOC_BINARY, db_path=LOC_DB)
+#
+# GLOBAL_GRAPH = Graph(bin_path=BINARY, db_path=DB)
 
-
-def panther(query_nodes, order=1, normalize=False):
-    g = Graph(bin_path=BINARY, db_path=DB)
+def panther(query_nodes, order=1, normalize=False, affine=0):
     scores = {}
 
     if normalize:
@@ -16,7 +17,7 @@ def panther(query_nodes, order=1, normalize=False):
     widgets = ['panther(): sampling: ', Percentage(), Bar(), ETA()]
     bar = ProgressBar(widgets=widgets, maxval=int(ceil(R))).start()
     for i in range(int(ceil(R))):
-        path = g.get_path(T + 1, order)
+        path = GLOBAL_GRAPH.get_path(T + 1, order=order, affine=affine)
         relevant_query_nodes = query_nodes & set(path)
         for node in relevant_query_nodes:
             if node not in scores:

@@ -17,7 +17,8 @@ R = (c / (epsilon ** 2)) * (log(sp.binom(T, 2), 2) + 1 + log(1 / delta))
 score_update = 1. / R
 
 # Experimental constants
+MAX_K = 100
 K_TRIALS = [5, 10, 25, 50]
 ORDERS = [1,2,3,4,5]
 MAX_ORDER = 5
-N_TRIALS = 5
+N_TRIALS = 3

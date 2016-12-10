@@ -146,18 +146,16 @@ def scrape_ifyoudig():
     driver.quit()
 
 
-def train(order, trial, normalize):
+def train(order, trial, normalize, affine):
     iydo = cPickle.load(open(IYDO))
     mus = iydo.keys()
 
     with ExecTimer() as t:
-        panther_scores = panther(mus, order=order, normalize=normalize)
+        panther_scores = panther(mus, order=order, normalize=normalize, affine=affine)
 
     ordered_sim = {}
     key_errors = 0
-    widgets = ['train(): Ordering: ', Percentage(), Bar(), ETA()]
-    bar = ProgressBar(widgets=widgets, maxval=R).start()
-    for i, node in enumerate(mus):
+    for node in mus:
         try:
             ordered = panther_scores[node].most_common()
             results = [key for key, _ in ordered if key in iydo]
@@ -165,55 +163,61 @@ def train(order, trial, normalize):
         except KeyError:
             key_errors += 1
 
-        bar.update(i)
+    print 'train(): Panther runtime: %f - Panther errors: %d' % (t.interval, key_errors)
 
-    bar.finish()
-
-    print "train(): Total errors (no Panther result): %d" % key_errors
-
-    with open('../data/trials/sim_trial_%d.pickle' % trial, 'wb') as f:
+    with open('../data/trials/sim_order_%d_norm_%d_affine_%d_trial_%d.pickle' % (order, normalize, affine, trial), 'wb') as f:
         cPickle.dump(ordered_sim, f)
 
     return ordered_sim, t.interval, key_errors
 
 
 def main():
-    results = []
+    results = {}
+    times = {}
     iydo = cPickle.load(open(IYDO))
-    for normalize in [True, False]:
-        for order in range(1, MAX_ORDER+1):
-            for trial in range(1, N_TRIALS+1):
-                ordered_sim, t_interval, key_errors = train(order, trial, normalize)
-                for k in K_TRIALS:
-                    params = (k, order, epsilon, T, R, trial)
-                    print 'k = %d, order = %d - trial %d:' % (k, order, trial)
-                    sample_size = 0
-                    aps = []
-                    zero_errors = 0
-                    for key, vals in ordered_sim.iteritems():
-                        try:
+    for affine in [1, 5, 6, 4, 0]:
+        for normalize in [True, False]:
+            max_order = MAX_ORDER
+            if affine == 0:
+                max_order = 10
+            for order in range(1, max_order + 1):
+                for trial in range(1, N_TRIALS+1):
+                    print 'main(): order = %d, normalize = %d, affine = %d - trial %d:' % (order, normalize, affine, trial)
+                    ordered_sim, t_interval, key_errors = train(order, trial, normalize, affine)
+                    results[(order, normalize, affine, trial)] = []
+                    times[(order, normalize, affine, trial)] = (t_interval, key_errors)
+                    for k in range(1, MAX_K + 1):
+                        sample_size = 0
+                        aps = []
+                        zero_errors = 0
+                        good_keys = []
+                        for key, vals in ordered_sim.iteritems():
                             top_k_panther = vals[:k]
                             top_k_iyd = iydo[key][:k]
                             binary = [1 if x in top_k_iyd else 0 for x in top_k_panther]
                             prec = [(float(x) * binary[i]) / (i + 1) for i, x in enumerate(list(np.cumsum(binary)))]
                             try:
-                                aps.append(sum(prec) / sum(binary))
+                                ap = sum(prec) / sum(binary)
+                                if ap > 0.8:
+                                    good_keys.append(key)
+                                aps.append(ap)
                             except ZeroDivisionError:
                                 zero_errors += 1
                                 aps.append(0.0)
                                 continue
                             sample_size += 1
-                        except KeyError:
-                            continue
 
-                    print 'main(): Average precision: %.05f - Sample size: %d - ' \
-                          'Zero errors: %d - Panther runtime: %f' % (float(np.mean(aps)), sample_size, zero_errors, t_interval)
+                        print 'main(): k: %d - Average precision: %.05f - Sample size: %d - ' \
+                              'Zero errors: %d' % (k, float(np.mean(aps)), sample_size, zero_errors)
 
-                    data = (aps, sample_size, zero_errors, t_interval, key_errors)
-                    results.append(params + data)
+                        data = (float(np.mean(aps)), good_keys, sample_size, zero_errors)
+                        results[(order, normalize, affine, trial)].append(data)
 
-    with open('../data/results/run_%d.pickle' % 1, 'wb') as f:
-        cPickle.dump(results, f)
+            with open('../data/results/run_%d_norm_%d_affine_%d.pickle' % (3, normalize, affine), 'wb') as f:
+                cPickle.dump((results, times), f)
+
+    with open('../data/results/run_%d.pickle' % 3, 'wb') as f:
+        cPickle.dump((results,times), f)
 
 
 if __name__ == "__main__":
