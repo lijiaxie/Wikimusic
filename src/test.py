@@ -42,7 +42,7 @@ def alpha():
             # unif pos
             else:
                 alphas.append(1)
-        print alphas
+        print(alphas)
         alphas = []
 
 
@@ -60,7 +60,7 @@ def counter_test():
         counters.reverse()
         ct_sum1 = sum(counters, ct())
 
-    print "For loop with key update: %.05f" % t.interval
+    print("For loop with key update: %.05f" % t.interval)
 
     with ExecTimer() as t:
         counters = [ct(x * abs(alphas[i])) for i, x in enumerate(hist)]
@@ -73,7 +73,7 @@ def counter_test():
                 ct_sum2 -= counters[i]
 
 
-    print "For loop for sum with abs: %.05f" % t.interval
+    print("For loop for sum with abs: %.05f" % t.interval)
 
 
 def path_test():
@@ -85,7 +85,7 @@ def path_test():
             with ExecTimer() as t:
                g.get_path(5,order,affine)
             times.append(t.interval)
-        print "Affine: %d - Time: %.05f" % (affine, sum(times) / len(times))
+        print("Affine: %d - Time: %.05f" % (affine, sum(times) / len(times)))
 
 
 if __name__ == "__main__":
