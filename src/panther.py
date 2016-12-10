@@ -2,9 +2,9 @@ from models import *
 from params import *
 from progressbar import *
 #
-GLOBAL_GRAPH = Graph(bin_path=LOC_BINARY, db_path=LOC_DB)
-#
-# GLOBAL_GRAPH = Graph(bin_path=BINARY, db_path=DB)
+# GLOBAL_GRAPH = Graph(bin_path=LOC_BINARY, db_path=LOC_DB)
+
+GLOBAL_GRAPH = Graph(bin_path=BINARY, db_path=DB)
 
 def panther(query_nodes, order=1, normalize=False, affine=0):
     scores = {}

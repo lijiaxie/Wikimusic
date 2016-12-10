@@ -55,44 +55,44 @@ def dbpedia_offsets(dbpedia_dir = DBPEDIA, local=True):
                               reverse=True, key=itemgetter(1)) if x[0]]
 
 
-def scrape_tastekid():
-    key = '250576-Finalpro-3926RW4Q'
-    data = {}
-    musicians = parse_dbpedia('../data/10000_dbpedia_rank.tsv')
-    widgets = ['Scraping: ', Percentage(), Bar(), ETA()]
-    bar = ProgressBar(widgets=widgets, maxval=200).start()
-    for i, musician in enumerate(musicians):
-        url = "https://www.tastekid.com/api/similar?q="
-        params = {'k': key, 'type': 'music'}
-        url += str('+'.join(musician.split(' ')))
-
-        url_parts = list(urlparse.urlparse(url))
-        query = dict(urlparse.parse_qsl(url_parts[4]))
-        query.update(params)
-        url_parts[4] = urllib.urlencode(query)
-
-        response = urllib.urlopen(urlparse.urlunparse(url_parts))
-        data[musician] = json.loads(response.read())
-        bar.update(i)
-        if i == 200:
-            break
-
-    bar.finish()
-
-    with open(TASTEKID_OUT, 'wb') as f:
-        cPickle.dump(data, f)
-
-
-def parse_tastekid(filename):
-    data = cPickle.load(open(filename))
-    sim = {}
-    for musician, results in data.iteritems():
-        try:
-            sim[musician] = [item['Name'] for item in data[musician]['Similar']['Results']]
-        except KeyError:
-            continue
-
-    return sim
+# def scrape_tastekid():
+#     key = '250576-Finalpro-3926RW4Q'
+#     data = {}
+#     musicians = parse_dbpedia('../data/10000_dbpedia_rank.tsv')
+#     widgets = ['Scraping: ', Percentage(), Bar(), ETA()]
+#     bar = ProgressBar(widgets=widgets, maxval=200).start()
+#     for i, musician in enumerate(musicians):
+#         url = "https://www.tastekid.com/api/similar?q="
+#         params = {'k': key, 'type': 'music'}
+#         url += str('+'.join(musician.split(' ')))
+#
+#         url_parts = list(urlparse.urlparse(url))
+#         query = dict(urlparse.parse_qsl(url_parts[4]))
+#         query.update(params)
+#         url_parts[4] = urllib.urlencode(query)
+#
+#         response = urllib.urlopen(urlparse.urlunparse(url_parts))
+#         data[musician] = json.loads(response.read())
+#         bar.update(i)
+#         if i == 200:
+#             break
+#
+#     bar.finish()
+#
+#     with open(TASTEKID_OUT, 'wb') as f:
+#         cPickle.dump(data, f)
+#
+#
+# def parse_tastekid(filename):
+#     data = cPickle.load(open(filename))
+#     sim = {}
+#     for musician, results in data.iteritems():
+#         try:
+#             sim[musician] = [item['Name'] for item in data[musician]['Similar']['Results']]
+#         except KeyError:
+#             continue
+#
+#     return sim
 
 
 def init_driver():
@@ -175,13 +175,13 @@ def main():
     results = {}
     times = {}
     iydo = cPickle.load(open(IYDO))
-    for affine in [1, 5, 6, 4, 0]:
-        for normalize in [True, False]:
-            max_order = MAX_ORDER
+    for affine in [0]:
+        for normalize in [False, True]:
+            max_order = 4
             if affine == 0:
-                max_order = 10
-            for order in range(1, max_order + 1):
-                for trial in range(1, N_TRIALS+1):
+                max_order = 6
+            for order in range(1, max_order):
+                for trial in range(1, 2):
                     print 'main(): order = %d, normalize = %d, affine = %d - trial %d:' % (order, normalize, affine, trial)
                     ordered_sim, t_interval, key_errors = train(order, trial, normalize, affine)
                     results[(order, normalize, affine, trial)] = []
@@ -189,7 +189,9 @@ def main():
                     for k in range(1, MAX_K + 1):
                         sample_size = 0
                         aps = []
-                        zero_errors = 0
+                        recalls = []
+                        zero_ap_errors = 0
+                        zero_recall_errors = 0
                         good_keys = []
                         for key, vals in ordered_sim.iteritems():
                             top_k_panther = vals[:k]
@@ -202,19 +204,26 @@ def main():
                                     good_keys.append(key)
                                 aps.append(ap)
                             except ZeroDivisionError:
-                                zero_errors += 1
+                                zero_ap_errors += 1
                                 aps.append(0.0)
-                                continue
+
+                            try:
+                                recalls.append(
+                                    float(len([x for x in top_k_panther if x in iydo[key]])) / len(iydo[key]))
+                            except ZeroDivisionError:
+                                zero_recall_errors += 1
+                                recalls.append(0.0)
+
                             sample_size += 1
 
-                        print 'main(): k: %d - Average precision: %.05f - Sample size: %d - ' \
-                              'Zero errors: %d' % (k, float(np.mean(aps)), sample_size, zero_errors)
+                        print 'main(): k: %d - Average precision: %.05f - Recall: %.05f - Sample size: %d - ' \
+                              'Zero errors - AP: %d - Recall: %d' % (k, float(np.mean(aps)), float(np.mean(recalls)), sample_size, zero_ap_errors, zero_recall_errors)
 
-                        data = (float(np.mean(aps)), good_keys, sample_size, zero_errors)
+                        data = (float(np.mean(aps)), float(np.mean(recalls)), good_keys, sample_size, zero_ap_errors, zero_recall_errors)
                         results[(order, normalize, affine, trial)].append(data)
 
-            with open('../data/results/run_%d_norm_%d_affine_%d.pickle' % (3, normalize, affine), 'wb') as f:
-                cPickle.dump((results, times), f)
+            # with open('../data/results/run_%d_norm_%d_affine_%d.pickle' % (3, normalize, affine), 'wb') as f:
+            #     cPickle.dump((results, times), f)
 
     with open('../data/results/run_%d.pickle' % 3, 'wb') as f:
         cPickle.dump((results,times), f)
