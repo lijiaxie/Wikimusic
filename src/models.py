@@ -7,9 +7,9 @@ from collections import Counter as ct
 
 class Graph:
     def __init__(self, bin_path, db_path, dbg=False):
-        if dbg:
+#        if dbg:
             # TODO: initialize logging
-            print "Loading file"
+#            print "Loading file"
 
         self.header_size = 4
         self.array = np.fromfile(bin_path, dtype='<i4')

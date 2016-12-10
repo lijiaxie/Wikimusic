@@ -136,7 +136,7 @@ def scrape_ifyoudig():
 
     bar.finish()
 
-    print "Cleaning up..."
+    print("Cleaning up...")
 
     data = {k: v for k, v in results.iteritems() if v}
 
@@ -163,7 +163,7 @@ def train(order, trial, normalize, affine):
         except KeyError:
             key_errors += 1
 
-    print 'train(): Panther runtime: %f - Panther errors: %d' % (t.interval, key_errors)
+    print('train(): Panther runtime: %f - Panther errors: %d' % (t.interval, key_errors))
 
     with open('../data/trials/sim_order_%d_norm_%d_affine_%d_trial_%d.pickle' % (order, normalize, affine, trial), 'wb') as f:
         cPickle.dump(ordered_sim, f)
@@ -175,14 +175,14 @@ def main():
     results = {}
     times = {}
     iydo = cPickle.load(open(IYDO))
-    for affine in [1, 5, 6, 4, 0]:
-        for normalize in [True, False]:
+    for affine in [0, 1, 2, 4, 5, 6, 3, 7]:
+        for normalize in [False]:
             max_order = MAX_ORDER
             if affine == 0:
                 max_order = 10
-            for order in range(1, max_order + 1):
-                for trial in range(1, N_TRIALS+1):
-                    print 'main(): order = %d, normalize = %d, affine = %d - trial %d:' % (order, normalize, affine, trial)
+            for order in range(1, 6):
+                for trial in [1]:
+                    print('main(): order = %d, normalize = %d, affine = %d - trial %d:' % (order, normalize, affine, trial))
                     ordered_sim, t_interval, key_errors = train(order, trial, normalize, affine)
                     results[(order, normalize, affine, trial)] = []
                     times[(order, normalize, affine, trial)] = (t_interval, key_errors)
@@ -207,8 +207,8 @@ def main():
                                 continue
                             sample_size += 1
 
-                        print 'main(): k: %d - Average precision: %.05f - Sample size: %d - ' \
-                              'Zero errors: %d' % (k, float(np.mean(aps)), sample_size, zero_errors)
+                        print('main(): k: %d - Average precision: %.05f - Sample size: %d - ' \
+                              'Zero errors: %d' % (k, float(np.mean(aps)), sample_size, zero_errors))
 
                         data = (float(np.mean(aps)), good_keys, sample_size, zero_errors)
                         results[(order, normalize, affine, trial)].append(data)
