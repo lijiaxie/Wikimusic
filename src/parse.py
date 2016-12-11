@@ -1,12 +1,12 @@
-import unicodecsv
+# import unicodecsv
 from panther import *
 import cPickle
-import json
-import urllib
-import urlparse
-from selenium import webdriver
-from selenium.webdriver.support.ui import WebDriverWait
-import lxml.html
+# import json
+# import urllib
+# import urlparse
+# from selenium import webdriver
+# from selenium.webdriver.support.ui import WebDriverWait
+# import lxml.html
 
 XML_ARTISTS = '../data/discogs_20160201_artists.xml'
 XML_RELEASES = '../data/discogs_20160101_releases.xml.gz'
@@ -23,36 +23,36 @@ DBPEDIA = '../data/dbpedia/'
 IYD = '../data/iyd.pickle'
 IYDO = '../data/iyd_o.pickle'
 
-def init_graph(local=True):
-    return Graph(LOC_BINARY, LOC_DB)
-
-
-def dbpedia_offsets(dbpedia_dir = DBPEDIA, local=True):
-    import os
-    musicians = []
-    if local:
-        dbpedia_dir = dbpedia_dir[3:]
-    for file in os.listdir(dbpedia_dir):
-        if file.endswith(".tsv"):
-            with open(os.path.join(dbpedia_dir, file), 'r') as f:
-                reader = unicodecsv.reader(f, delimiter='\t')
-                next(reader)
-                for row in reader:
-                    string = row[0][28:].replace('_', ' ')
-                    assert(type(string) == type(u''))
-                    tup = (string, float(row[1]))
-                    if tup not in musicians:
-                        musicians.append(tup)
-
-    if not local:
-        g = Graph(BINARY, DB)
-    else:
-        g = Graph(LOC_BINARY, LOC_DB)
-
-    from operator import itemgetter
-
-    return [x for x in sorted([(g.find(node), score) for node, score in musicians],
-                              reverse=True, key=itemgetter(1)) if x[0]]
+# def init_graph(local=True):
+#     return Graph(LOC_BINARY, LOC_DB)
+#
+#
+# def dbpedia_offsets(dbpedia_dir = DBPEDIA, local=True):
+#     import os
+#     musicians = []
+#     if local:
+#         dbpedia_dir = dbpedia_dir[3:]
+#     for file in os.listdir(dbpedia_dir):
+#         if file.endswith(".tsv"):
+#             with open(os.path.join(dbpedia_dir, file), 'r') as f:
+#                 reader = unicodecsv.reader(f, delimiter='\t')
+#                 next(reader)
+#                 for row in reader:
+#                     string = row[0][28:].replace('_', ' ')
+#                     assert(type(string) == type(u''))
+#                     tup = (string, float(row[1]))
+#                     if tup not in musicians:
+#                         musicians.append(tup)
+#
+#     if not local:
+#         g = Graph(BINARY, DB)
+#     else:
+#         g = Graph(LOC_BINARY, LOC_DB)
+#
+#     from operator import itemgetter
+#
+#     return [x for x in sorted([(g.find(node), score) for node, score in musicians],
+#                               reverse=True, key=itemgetter(1)) if x[0]]
 
 
 # def scrape_tastekid():
@@ -94,56 +94,56 @@ def dbpedia_offsets(dbpedia_dir = DBPEDIA, local=True):
 #
 #     return sim
 
-
-def init_driver():
-    opts = webdriver.ChromeOptions()
-    opts.add_extension('../misc/Adblock-Plus-development-build_v1.12.4.1697.crx')
-    driver = webdriver.Chrome(chrome_options=opts)
-    driver.wait = WebDriverWait(driver, 5)
-    return driver
-
-
-def lookup(driver, query):
-    url = "http://ifyoudig.net/" + query
-    driver.get(url)
-    results = []
-
-    root = lxml.html.fromstring(driver.page_source)
-    for row in root.xpath('.//table[@class="correlations"]//tbody//tr'):
-        artist = row.xpath('.//td/a/text()')
-        # lh = row.xpath('.//td[@class="lh"]/text()')
-        if artist:
-            results.append(unicode(artist[0]))
-    return results
-
-
-def scrape_ifyoudig():
-    driver = init_driver()
-    musicians = cPickle.load(open(MUS_NAMES))
-    names = list(zip(*musicians)[0])
-    results = {}
-    old_data = cPickle.load(open(IFYOUDIG_OUT_OLD))
-    new_names = [x for x in names if x not in old_data]
-    assert(len(new_names) == 7770)
-    widgets = ['Scraping: ', Percentage(), Bar(), ETA()]
-    bar = ProgressBar(widgets=widgets, maxval=len(new_names)).start()
-    for i, musician in enumerate(new_names):
-        name = musician.split(' (')[0]
-        query = "-".join(name.split(" ")).lower()
-        result = lookup(driver, query)
-        results[musician] = result
-        bar.update(i)
-
-    bar.finish()
-
-    print "Cleaning up..."
-
-    data = {k: v for k, v in results.iteritems() if v}
-
-    with open(IFYOUDIG_TWO, 'wb') as f:
-        cPickle.dump(data, f)
-
-    driver.quit()
+#
+# def init_driver():
+#     opts = webdriver.ChromeOptions()
+#     opts.add_extension('../misc/Adblock-Plus-development-build_v1.12.4.1697.crx')
+#     driver = webdriver.Chrome(chrome_options=opts)
+#     driver.wait = WebDriverWait(driver, 5)
+#     return driver
+#
+#
+# def lookup(driver, query):
+#     url = "http://ifyoudig.net/" + query
+#     driver.get(url)
+#     results = []
+#
+#     root = lxml.html.fromstring(driver.page_source)
+#     for row in root.xpath('.//table[@class="correlations"]//tbody//tr'):
+#         artist = row.xpath('.//td/a/text()')
+#         # lh = row.xpath('.//td[@class="lh"]/text()')
+#         if artist:
+#             results.append(unicode(artist[0]))
+#     return results
+#
+#
+# def scrape_ifyoudig():
+#     driver = init_driver()
+#     musicians = cPickle.load(open(MUS_NAMES))
+#     names = list(zip(*musicians)[0])
+#     results = {}
+#     old_data = cPickle.load(open(IFYOUDIG_OUT_OLD))
+#     new_names = [x for x in names if x not in old_data]
+#     assert(len(new_names) == 7770)
+#     widgets = ['Scraping: ', Percentage(), Bar(), ETA()]
+#     bar = ProgressBar(widgets=widgets, maxval=len(new_names)).start()
+#     for i, musician in enumerate(new_names):
+#         name = musician.split(' (')[0]
+#         query = "-".join(name.split(" ")).lower()
+#         result = lookup(driver, query)
+#         results[musician] = result
+#         bar.update(i)
+#
+#     bar.finish()
+#
+#     print "Cleaning up..."
+#
+#     data = {k: v for k, v in results.iteritems() if v}
+#
+#     with open(IFYOUDIG_TWO, 'wb') as f:
+#         cPickle.dump(data, f)
+#
+#     driver.quit()
 
 
 def train(order, trial, normalize, affine):
