@@ -165,7 +165,7 @@ def train(order, trial, normalize, affine):
 
     print 'train(): Panther runtime: %f - Panther errors: %d' % (t.interval, key_errors)
 
-    with open('../data/trials/sim_eps_%f_norm_%d_affine_%d_trial_%d.pickle' % (order, normalize, affine, trial), 'wb') as f:
+    with open('../data/trials/sim_order_%d_norm_%d_eps_%f_trial_%d.pickle' % (order, normalize, affine, trial), 'wb') as f:
         cPickle.dump(ordered_sim, f)
 
     return ordered_sim, t.interval, key_errors
@@ -175,14 +175,14 @@ def main():
     results = {}
     times = {}
     iydo = cPickle.load(open(IYDO))
-    for affine in [0]:
+    for order in [1,2,3,4,5]:
         for normalize in [False]:
             # max_order = 4
             # if affine == 0:
             #     max_order = 6
-            for order in [0.06, 0.03, 0.01, 0.006, 0.003]:
+            for affine in [0.06, 0.03, 0.01, 0.006, 0.003, 0.001]:
                 for trial in range(1, 2):
-                    print 'main(): order = %d, normalize = %d, affine = %d - trial %d:' % (order, normalize, affine, trial)
+                    print 'main(): order = %d, normalize = %d, affine = %f - trial %d:' % (order, normalize, affine, trial)
                     ordered_sim, t_interval, key_errors = train(order, trial, normalize, affine)
                     results[(order, normalize, affine, trial)] = []
                     times[(order, normalize, affine, trial)] = (t_interval, key_errors)
@@ -225,7 +225,7 @@ def main():
             # with open('../data/results/run_%d_norm_%d_affine_%d.pickle' % (3, normalize, affine), 'wb') as f:
             #     cPickle.dump((results, times), f)
 
-    with open('../data/results/run_%d.pickle' % 3, 'wb') as f:
+    with open('../data/results/run_%d.pickle' % 5, 'wb') as f:
         cPickle.dump((results,times), f)
 
 

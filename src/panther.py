@@ -14,13 +14,15 @@ def panther(query_nodes, order=1, normalize=False, affine=0):
 
     query_nodes = set(query_nodes)
 
-    new_R = (c / (order ** 2)) * (log(sp.binom(T, 2), 2) + 1 + log(1 / delta))
+    new_R = (c / (affine ** 2)) * (log(sp.binom(T, 2), 2) + 1 + log(1 / delta))
+
+    # new_R = R
 
     widgets = ['panther(): sampling: ', Percentage(), Bar(), ETA()]
     bar = ProgressBar(widgets=widgets, maxval=int(ceil(new_R))).start()
 
     for i in range(int(ceil(new_R))):
-        path = GLOBAL_GRAPH.get_path(5, order=3, affine=affine)
+        path = GLOBAL_GRAPH.get_path(T + 1, order=order, affine=0)
         relevant_query_nodes = query_nodes & set(path)
         for node in relevant_query_nodes:
             if node not in scores:
