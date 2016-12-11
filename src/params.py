@@ -9,7 +9,7 @@ LOC_DB = 'data/wikidata/xindex-nocase.db'
 
 c = 0.5
 delta = 0.1
-T = 100
+T = 5
 D = 50
 epsilon = 0.001
 E = 168096214
